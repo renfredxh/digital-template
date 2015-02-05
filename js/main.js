@@ -8,6 +8,7 @@ window.onload = function() {
     game.load.tilemap('level', 'assets/testLevel.json', null, Phaser.Tilemap.TILED_JSON);
     game.load.image('tiles', 'assets/tiles.png');
     game.load.spritesheet('dog', 'assets/dogsheet.png', 128, 96);
+    game.load.spritesheet('fireball', 'assets/fireball.png', 64, 48);
     game.load.image('robot', 'assets/robot.png');
     game.load.image('background', 'assets/background.png');
 
@@ -20,8 +21,9 @@ window.onload = function() {
   var player;
   var playerData = {};
   var enemies;
+  var fireballs;
   var cursors;
-  var jumpButton;
+  var spaceBar;
   var bg;
 
   var enemyLocations = [[15,90], [30, 90], [35, 90]]
@@ -56,6 +58,7 @@ window.onload = function() {
     playerData.health = 100;
     playerData.jumpTimer = 0;
     playerData.healthTimer = 0;
+    playerData.fireTimer = 0;
     playerData.sideAction = actions.side[0];
     playerData.upAction = actions.up[0];
     playerData.downAction = actions.down[0];
@@ -96,6 +99,14 @@ window.onload = function() {
       game.add.tween(enemy.body.velocity).to( {x: enemyVelocity}, enemyDuration, Phaser.Easing.Back.InOut, true, enemyDelay, false)
     }
 
+    // Projectiles
+    fireballs = game.add.group();
+    fireballs.enableBody = true;
+    fireballs.physicsBodyType = Phaser.Physics.ARCADE;
+    fireballs.createMultiple(25, 'fireball');
+    fireballs.setAll('checkWorldBounds', true);
+    fireballs.setAll('outOfBoundsKill', true);
+
     healthText = game.add.text(720, 570, 'Health: ' + parseInt(playerData.health), { fontSize: '34px', fill: '#fff'});
     upText = game.add.text(10, 10, '↑: ' + playerData.upAction.name, { fontSize: '34px', fill: '#FFF'});
     sideText = game.add.text(184, 10, '⇄: ' + playerData.sideAction.name, { fontSize: '34px', fill: '#FFF'});
@@ -111,7 +122,7 @@ window.onload = function() {
 
     healthText.anchor.set(0.5)
     cursors = game.input.keyboard.createCursorKeys();
-    jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+    spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
   }
 
@@ -119,18 +130,23 @@ window.onload = function() {
 
     var side = playerData.sideAction;
     var up = playerData.upAction;
+    var space = playerData.spaceAction;
 
     game.physics.arcade.collide(player, layer);
     game.physics.arcade.collide(enemies, layer);
     game.physics.arcade.collide(enemies, enemies);
     game.physics.arcade.overlap(player, enemies, enemyContact, null, this);
+    game.physics.arcade.overlap(fireballs, enemies, enemyHit, null, this);
 
 
-    // Walking
+    // Side action
     side.action.apply(side, side.args);
 
-    // Jumping
+    // Up action
     up.action.apply(up, up.args);
+
+    //
+    space.action.apply(space, space.args);
   }
 
   function render () {
@@ -157,6 +173,11 @@ window.onload = function() {
       healthText.text = 'Health: ' + playerData.health;
       playerData.healthTimer = game.time.now + 1200;
     }
+  }
+
+  function enemyHit(fireball, enemy) {
+    fireball.kill();
+    enemy.kill();
   }
 
   function randInt(min, max) {
@@ -262,10 +283,28 @@ window.onload = function() {
     }
   }, [])
 
+  var fire = new PlayerAction('Fire', function() {
+    if (spaceBar.isDown && game.time.now > playerData.fireTimer) {
+      var fireball = fireballs.getFirstDead();
+      fireball.body.allowGravity = false;
+      if (playerData.facing === 'right') {
+        fireball.reset(player.body.x + 64, player.body.y - 5);
+        fireball.frame = 0;
+        fireball.body.velocity.x = 500;
+      } else {
+        fireball.reset(player.body.x - 64, player.body.y - 5);
+        fireball.frame = 1;
+        fireball.body.velocity.x = -500;
+      }
+      fireball.body.velocity.y = 30;
+      playerData.fireTimer = game.time.now + 1000;
+    }
+
+  });
   var actions = {
     'up': [jump],
     'side': [run],
     'down': [none],
-    'space': [none]
+    'space': [fire]
   }
 }
