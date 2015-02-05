@@ -12,6 +12,7 @@ window.onload = function() {
     game.load.spritesheet('gem', 'assets/gem.png', 24, 24);
     game.load.image('robot', 'assets/robot.png');
     game.load.image('background', 'assets/background.png');
+    game.load.audio('pickup', 'assets/pickup.ogg');
 
   }
 
@@ -28,15 +29,15 @@ window.onload = function() {
   var cursors;
   var spaceBar;
   var bg;
+  var gemSound;
 
   var actionIndexes = {up: 0, side: 0, down: 0, space: 0};
   var actionTiming = [[3000, 5000], [2000, 10000]];
   var enemyLocations = [[81,81], [85,97], [73, 97]];
-  var gemLocations = [[15,90], [17, 90], [18, 90], [21, 46], [30, 90]];
+  var gemLocations = [[14,90], [16, 90], [18, 90], [14, 95], [18, 95]];
   var actionShuffle = ['up', 'side', 'down', 'space'];
 
   function create() {
-
     game.physics.startSystem(Phaser.Physics.ARCADE);
 
     game.stage.backgroundColor = '#000000';
@@ -121,7 +122,7 @@ window.onload = function() {
       gem.body.collideWorldBounds = true
       gem.body.setSize(24, 26, 0, 0);
       // Random movement pattern for each gem
-      var gemDelay = randInt(0, 200)
+      var gemDelay = randInt(0, 100)
       game.add.tween(gem.body.velocity).to( {y: 400}, 2000, Phaser.Easing.Back.InOut, true, gemDelay, false)
     }
 
@@ -152,6 +153,8 @@ window.onload = function() {
     cursors = game.input.keyboard.createCursorKeys();
     spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
+    gemSound = game.add.audio('pickup');
+    gemSound.allowMultiple = true;
   }
 
   function update() {
@@ -261,6 +264,7 @@ window.onload = function() {
   }
 
   function collectGem(player, gem) {
+    gemSound.play();
     gem.kill();
     playerData.gems += 1;
     updateHealth(playerData.health + 5);
