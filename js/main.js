@@ -33,8 +33,8 @@ window.onload = function() {
 
   var actionIndexes = {up: 0, side: 0, down: 0, space: 0};
   var actionTiming = [[3000, 5000], [2000, 10000]];
-  var enemyLocations = [[81,81], [85,97], [73, 97]];
-  var gemLocations = [[14,90], [16, 90], [18, 90], [14, 95], [18, 95]];
+  var enemyLocations = [[45,81], [85,97], [73, 97], [39, 31], [61, 87], [72, 31], [90, 26], [90, 35], [90, 22]];
+  var gemLocations = [[14,90], [16, 90], [18, 90], [14, 95], [18, 95], [81,88], [88,76], [61,87], [72, 31], [80, 31], [86, 31], [85, 26], [36, 33], [67, 22]];
   var actionShuffle = ['up', 'side', 'down', 'space'];
 
   function create() {
@@ -63,12 +63,12 @@ window.onload = function() {
     // Player
     playerData.facing = 'right';
     playerData.moving = false;
-    playerData.health = 100;
+    playerData.health = 30;
     playerData.gems = 0;
     playerData.jumpTimer = 0;
     playerData.healthTimer = 0;
     playerData.fireTimer = 0;
-    playerData.memoryTimer = game.time.now + randInt(3000, 5000);
+    playerData.memoryTimer = game.time.now + randInt(2000, 3000);
     playerData.sideAction = actions.side[0];
     playerData.upAction = none;
     playerData.downAction = actions.down[0];
@@ -161,6 +161,7 @@ window.onload = function() {
 
     var side = playerData.sideAction;
     var up = playerData.upAction;
+    var down = playerData.downAction;
     var space = playerData.spaceAction;
     var actionsRemaining;
 
@@ -178,6 +179,9 @@ window.onload = function() {
 
     // Up action
     up.action.apply(up, up.args);
+
+    // Downaction
+    down.action.apply(down, down.args);
 
     // Space action
     space.action.apply(space, space.args);
@@ -223,14 +227,14 @@ window.onload = function() {
   function render () {
     //game.debug.text(game.time.physicsElapsed, 32, 32);
     //game.debug.body(player);
-    game.debug.bodyInfo(player, 16, 24);
+    //game.debug.bodyInfo(player, 16, 24);
     //enemies.forEach(function(enemy) { game.debug.body(enemy); });
 
   }
 
   function restart () {
     player.reset(20, 3000);
-    updateHealth(100);
+    updateHealth(30);
   }
 
   function standStill(player) {
@@ -313,6 +317,60 @@ window.onload = function() {
     }
   }, [420]);
 
+  var highJump = new PlayerAction('High Jump', function(velocity) {
+    if (cursors.up.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
+      player.body.velocity.y = -620;
+      playerData.jumpTimer = game.time.now + 750;
+    }
+    if (!player.body.onFloor()) {
+      if (player.body.velocity.y < -400) {
+        player.frame = {
+          right: 10,
+          left: 13
+        }[playerData.facing]
+      } else if (player.body.velocity.y >= -400 && player.body.velocity.y < 25) {
+        player.frame = {
+          right: 12,
+          left: 15
+        }[playerData.facing]
+      } else {
+        player.frame = {
+          right: 11,
+          left: 14
+        }[playerData.facing]
+      }
+    } else if (!playerData.moving) {
+      standStill(player)
+    }
+  }, [920]);
+
+  var superJump = new PlayerAction('Super Jump', function(velocity) {
+    if (cursors.up.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
+      player.body.velocity.y = -920;
+      playerData.jumpTimer = game.time.now + 750;
+    }
+    if (!player.body.onFloor()) {
+      if (player.body.velocity.y < -400) {
+        player.frame = {
+          right: 10,
+          left: 13
+        }[playerData.facing]
+      } else if (player.body.velocity.y >= -400 && player.body.velocity.y < 25) {
+        player.frame = {
+          right: 12,
+          left: 15
+        }[playerData.facing]
+      } else {
+        player.frame = {
+          right: 11,
+          left: 14
+        }[playerData.facing]
+      }
+    } else if (!playerData.moving) {
+      standStill(player)
+    }
+  }, [920]);
+
   /*
    * Walk at normal speed.
    */
@@ -333,6 +391,34 @@ window.onload = function() {
       playerData.facing = 'right'
       playerData.moving = true
       player.body.velocity.x = 150;
+    }
+    else {
+      if (playerData.moving) {
+        player.body.velocity.x = 0;
+        player.animations.stop();
+        standStill(player)
+        playerData.moving = false;
+      }
+    }
+  }, [])
+
+  var dash = new PlayerAction('Dash', function() {
+    player.body.acceleration.x = 0;
+    if (cursors.left.isDown) {
+      if (!playerData.moving || playerData.facing === 'right') {
+        player.animations.play('leftRun');
+      }
+      playerData.facing = 'left';
+      playerData.moving = true
+      player.body.velocity.x = -550;
+
+    } else if (cursors.right.isDown) {
+      if (!playerData.moving || playerData.facing === 'left') {
+        player.animations.play('rightRun');
+      }
+      playerData.facing = 'right'
+      playerData.moving = true
+      player.body.velocity.x = 550;
     }
     else {
       if (playerData.moving) {
@@ -397,10 +483,19 @@ window.onload = function() {
 
   });
 
+  var heal = new PlayerAction('Heal', function() {
+    if (cursors.down.isDown && game.time.now > playerData.healthTimer) {
+      if (playerData.health <= 40) {
+        updateHealth(playerData.health + 2);
+      }
+      playerData.healthTimer = game.time.now + 1000;
+    }
+  });
+
   var actions = {
-    up: [jump],
-    side: [walk,run,run],
-    down: [none],
-    space:[none,fire,fire,fire]
+    up: [jump, jump, highJump, superJump],
+    side: [walk, run, run, dash],
+    down: [none, heal],
+    space:[none, fire, fire, fire]
   }
 }
