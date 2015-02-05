@@ -1,6 +1,12 @@
 "use strict"
 
 window.onload = function() {
+  function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  var enemyLocations = [[15,90], [30, 90], [35, 90]]
+
   var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game', { preload: preload, create: create, update: update, render: render });
 
   function preload() {
@@ -8,6 +14,7 @@ window.onload = function() {
     game.load.tilemap('level', 'assets/testLevel.json', null, Phaser.Tilemap.TILED_JSON);
     game.load.image('tiles', 'assets/tiles.png');
     game.load.spritesheet('dog', 'assets/dogsheet.png', 128, 96);
+    game.load.image('robot', 'assets/robot.png');
     game.load.image('background', 'assets/background2.png');
 
   }
@@ -16,9 +23,8 @@ window.onload = function() {
   var tileset;
   var layer;
   var player;
-  var facing = 'right';
-  var moving = false
-  var jumpTimer = 0;
+  var playerData = {};
+  var enemies;
   var cursors;
   var jumpButton;
   var bg;
@@ -47,6 +53,10 @@ window.onload = function() {
 
     game.physics.arcade.gravity.y = 980;
 
+    // Player
+    playerData.facing = 'right'
+    playerData.moving = false
+    playerData.jumpTimer = 0
     player = game.add.sprite(20, 3000, 'dog');
     game.physics.enable(player, Phaser.Physics.ARCADE);
 
@@ -60,6 +70,31 @@ window.onload = function() {
 
     game.camera.follow(player);
 
+    // Enemies
+    enemies = game.add.group();
+
+    var tileXY;
+    var tile;
+    var enemy;
+    for (var i=0; i<enemyLocations.length; i++) {
+      tileXY = enemyLocations[i];
+      tile = map.getTile(tileXY[0], tileXY[1], 'Level', true)
+      enemy = enemies.create(tile.worldX, tile.worldY, 'robot');
+      game.physics.enable(enemy, Phaser.Physics.ARCADE);
+      enemy.body.bounce.y = 0.2;
+      enemy.body.collideWorldBounds = true
+      enemy.body.setSize(64, 70);
+      // Random movement pattern for each enemy
+      var enemyVelocity = randInt(40, 60);
+      var enemyDelay = randInt(0, 800)
+      var enemyDuration = randInt(4000, 5000)
+      enemy.body.velocity.x = -enemyVelocity;
+      game.add.tween(enemy.body.velocity).to( {x: enemyVelocity}, enemyDuration, Phaser.Easing.Back.InOut, true, enemyDelay, false)
+
+      game.debug.body(enemy);
+    }
+
+
     cursors = game.input.keyboard.createCursorKeys();
     jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
@@ -68,75 +103,85 @@ window.onload = function() {
   function update() {
 
     game.physics.arcade.collide(player, layer);
+    game.physics.arcade.collide(enemies, layer);
+    game.physics.arcade.collide(enemies, enemies);
+    game.physics.arcade.overlap(player, enemies, enemyContact, null, this);
 
     player.body.velocity.x = 0;
 
     // Walking
     if (cursors.left.isDown) {
-      if (!moving || facing === 'right') {
+      if (!playerData.moving || playerData.facing === 'right') {
         player.animations.play('left');
       }
-      facing = 'left';
-      moving = true
+      playerData.facing = 'left';
+      playerData.moving = true
       player.body.velocity.x = -150;
 
     } else if (cursors.right.isDown) {
-      if (!moving || facing === 'left') {
+      if (!playerData.moving || playerData.facing === 'left') {
         player.animations.play('right');
       }
-      facing = 'right'
-      moving = true
+      playerData.facing = 'right'
+      playerData.moving = true
       player.body.velocity.x = 150;
     }
     else {
-      if (moving) {
+      if (playerData.moving) {
         player.animations.stop();
         standStill(player)
-        moving = false;
+        playerData.moving = false;
       }
     }
 
     // Jumping
-    if (jumpButton.isDown && player.body.onFloor() && game.time.now > jumpTimer) {
+    if (jumpButton.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
       player.body.velocity.y = -400;
-      jumpTimer = game.time.now + 750;
+      playerData.jumpTimer = game.time.now + 750;
     }
     if (!player.body.onFloor()) {
       if (player.body.velocity.y < -300) {
         player.frame = {
           right: 10,
           left: 13
-        }[facing]
+        }[playerData.facing]
       } else if (player.body.velocity.y >= -300 && player.body.velocity.y < 25) {
         player.frame = {
           right: 12,
           left: 15
-        }[facing]
+        }[playerData.facing]
       } else {
         player.frame = {
           right: 11,
           left: 14
-        }[facing]
+        }[playerData.facing]
       }
-    } else if (!moving) {
+    } else if (!playerData.moving) {
       standStill(player)
     }
+
+    // Enemies
+    
   }
 
   function render () {
-
     //game.debug.text(game.time.physicsElapsed, 32, 32);
     //game.debug.body(player);
     game.debug.bodyInfo(player, 16, 24);
+    // enemies.forEach(function(enemy) { game.debug.body(enemy); });
 
   }
 
   function standStill(player) {
-    if (facing == 'left') {
+    if (playerData.facing == 'left') {
       player.frame = 5;
     }
     else {
       player.frame = 0;
     }
+  }
+
+  function enemyContact(player, enemy) {
+    console.log("Hit")
   }
 }
