@@ -1,3 +1,5 @@
+"use strict"
+
 window.onload = function() {
   var game = new Phaser.Game(800, 600, Phaser.AUTO, 'game', { preload: preload, create: create, update: update, render: render });
 
@@ -6,9 +8,6 @@ window.onload = function() {
     game.load.tilemap('level', 'assets/testLevel.json', null, Phaser.Tilemap.TILED_JSON);
     game.load.image('tiles', 'assets/tiles.png');
     game.load.spritesheet('dog', 'assets/dogsheet.png', 128, 96);
-    game.load.spritesheet('droid', 'assets/droid.png', 32, 32);
-    game.load.image('starSmall', 'assets/star.png');
-    game.load.image('starBig', 'assets/star2.png');
     game.load.image('background', 'assets/background2.png');
 
   }
@@ -18,6 +17,7 @@ window.onload = function() {
   var layer;
   var player;
   var facing = 'right';
+  var moving = false
   var jumpTimer = 0;
   var cursors;
   var jumpButton;
@@ -52,7 +52,7 @@ window.onload = function() {
 
     player.body.bounce.y = 0.2;
     player.body.collideWorldBounds = true;
-    player.body.setSize(96, 64, 25, 32);
+    player.body.setSize(80, 64, 25, 32);
 
     player.animations.add('right', [0, 1, 2, 3], 10, true);
     player.animations.add('left', [6, 7, 8, 9], 10, true);
@@ -71,39 +71,55 @@ window.onload = function() {
 
     player.body.velocity.x = 0;
 
+    // Walking
     if (cursors.left.isDown) {
+      if (!moving || facing === 'right') {
+        player.animations.play('left');
+      }
+      facing = 'left';
+      moving = true
       player.body.velocity.x = -150;
 
-      if (facing != 'left') {
-        player.animations.play('left');
-        facing = 'left';
-      }
     } else if (cursors.right.isDown) {
-      player.body.velocity.x = 150;
-
-      if (facing != 'right') {
+      if (!moving || facing === 'left') {
         player.animations.play('right');
-        facing = 'right';
       }
+      facing = 'right'
+      moving = true
+      player.body.velocity.x = 150;
     }
     else {
-      if (facing != 'idle') {
+      if (moving) {
         player.animations.stop();
-
-        if (facing == 'left') {
-          player.frame = 5;
-        }
-        else {
-          player.frame = 0;
-        }
-
-        facing = 'idle';
+        standStill(player)
+        moving = false;
       }
     }
 
+    // Jumping
     if (jumpButton.isDown && player.body.onFloor() && game.time.now > jumpTimer) {
       player.body.velocity.y = -400;
       jumpTimer = game.time.now + 750;
+    }
+    if (!player.body.onFloor()) {
+      if (player.body.velocity.y < -300) {
+        player.frame = {
+          right: 10,
+          left: 13
+        }[facing]
+      } else if (player.body.velocity.y >= -300 && player.body.velocity.y < 25) {
+        player.frame = {
+          right: 12,
+          left: 15
+        }[facing]
+      } else {
+        player.frame = {
+          right: 11,
+          left: 14
+        }[facing]
+      }
+    } else if (!moving) {
+      standStill(player)
     }
   }
 
@@ -111,7 +127,16 @@ window.onload = function() {
 
     //game.debug.text(game.time.physicsElapsed, 32, 32);
     //game.debug.body(player);
-    //game.debug.bodyInfo(player, 16, 24);
+    game.debug.bodyInfo(player, 16, 24);
 
+  }
+
+  function standStill(player) {
+    if (facing == 'left') {
+      player.frame = 5;
+    }
+    else {
+      player.frame = 0;
+    }
   }
 }
