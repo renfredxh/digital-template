@@ -59,10 +59,10 @@ window.onload = function() {
     playerData.jumpTimer = 0;
     playerData.healthTimer = 0;
     playerData.fireTimer = 0;
-    playerData.sideAction = actions.side[0];
-    playerData.upAction = actions.up[0];
-    playerData.downAction = actions.down[0];
-    playerData.spaceAction = actions.space[0];
+    playerData.sideAction = actions.side[0][0];
+    playerData.upAction = actions.up[0][0];
+    playerData.downAction = actions.down[0][0];
+    playerData.spaceAction = actions.space[0][0];
     player = game.add.sprite(20, 3000, 'dog');
     game.physics.enable(player, Phaser.Physics.ARCADE);
 
@@ -152,9 +152,14 @@ window.onload = function() {
   function render () {
     //game.debug.text(game.time.physicsElapsed, 32, 32);
     //game.debug.body(player);
-    game.debug.bodyInfo(player, 16, 24);
+    //game.debug.bodyInfo(player, 16, 24);
     //enemies.forEach(function(enemy) { game.debug.body(enemy); });
 
+  }
+
+  function restart () {
+    player.reset(20, 3000);
+    updateHealth(100);
   }
 
   function standStill(player) {
@@ -166,11 +171,18 @@ window.onload = function() {
     }
   }
 
+  function updateHealth(newHealth) {
+      playerData.health = newHealth;
+      healthText.text = 'Health: ' + playerData.health;
+  }
+
   function enemyContact(player, enemy) {
     if (game.time.now > playerData.healthTimer) {
-      playerData.health -= 10;
       player.body.velocity.y = -200;
-      healthText.text = 'Health: ' + playerData.health;
+      updateHealth(playerData.health - 10);
+      if (playerData.health <= 0) {
+        restart();
+      }
       playerData.healthTimer = game.time.now + 1200;
     }
   }
@@ -302,9 +314,9 @@ window.onload = function() {
 
   });
   var actions = {
-    'up': [jump],
-    'side': [run],
-    'down': [none],
-    'space': [fire]
+    'up': [[none],[jump]],
+    'side': [[walk],[run]],
+    'down': [[none]],
+    'space':[[none],[fire]]
   }
 }
