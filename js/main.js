@@ -9,6 +9,7 @@ window.onload = function() {
     game.load.image('tiles', 'assets/tiles.png');
     game.load.spritesheet('dog', 'assets/dogsheet.png', 128, 96);
     game.load.spritesheet('fireball', 'assets/fireball.png', 64, 48);
+    game.load.spritesheet('gem', 'assets/gem.png', 24, 24);
     game.load.image('robot', 'assets/robot.png');
     game.load.image('background', 'assets/background.png');
 
@@ -16,12 +17,13 @@ window.onload = function() {
 
   var map;
   var tileset;
-  var healthText, upText, sideText, downText, spaceText;
+  var healthText, gemText, winText, upText, sideText, downText, spaceText;
   var layer;
   var player;
   var playerData = {};
   var actionSet = 0;
   var enemies;
+  var gems;
   var fireballs;
   var cursors;
   var spaceBar;
@@ -29,7 +31,8 @@ window.onload = function() {
 
   var actionIndexes = {up: 0, side: 0, down: 0, space: 0};
   var actionTiming = [[3000, 5000], [2000, 10000]];
-  var enemyLocations = [[15,90], [30, 90], [35, 90]];
+  var enemyLocations = [[81,81], [85,97], [73, 97]];
+  var gemLocations = [[15,90], [17, 90], [18, 90], [21, 46], [30, 90]];
   var actionShuffle = ['up', 'side', 'down', 'space'];
 
   function create() {
@@ -60,6 +63,7 @@ window.onload = function() {
     playerData.facing = 'right';
     playerData.moving = false;
     playerData.health = 100;
+    playerData.gems = 0;
     playerData.jumpTimer = 0;
     playerData.healthTimer = 0;
     playerData.fireTimer = 0;
@@ -104,6 +108,23 @@ window.onload = function() {
       game.add.tween(enemy.body.velocity).to( {x: enemyVelocity}, enemyDuration, Phaser.Easing.Back.InOut, true, enemyDelay, false)
     }
 
+    // Gems
+    gems = game.add.group();
+
+    var gem;
+    for (var i=0; i<gemLocations.length; i++) {
+      tileXY = gemLocations[i];
+      tile = map.getTile(tileXY[0], tileXY[1], 'Level', true)
+      gem = gems.create(tile.worldX, tile.worldY, 'gem');
+      game.physics.enable(gem, Phaser.Physics.ARCADE);
+      gem.body.bounce.y = 0.5;
+      gem.body.collideWorldBounds = true
+      gem.body.setSize(24, 26, 0, 0);
+      // Random movement pattern for each gem
+      var gemDelay = randInt(0, 200)
+      game.add.tween(gem.body.velocity).to( {y: 400}, 2000, Phaser.Easing.Back.InOut, true, gemDelay, false)
+    }
+
     // Projectiles
     fireballs = game.add.group();
     fireballs.enableBody = true;
@@ -113,12 +134,13 @@ window.onload = function() {
     fireballs.setAll('outOfBoundsKill', true);
 
     healthText = game.add.text(720, 570, 'Health: ' + parseInt(playerData.health), { fontSize: '34px', fill: '#fff'});
+    gemText = game.add.text(520, 570, 'Gems: ' + parseInt(playerData.gems), { fontSize: '34px', fill: '#fff'});
     upText = game.add.text(10, 10, '↑: ' + playerData.upAction.name, { fontSize: '34px', fill: '#FFF'});
     sideText = game.add.text(184, 10, '⇄: ' + playerData.sideAction.name, { fontSize: '34px', fill: '#FFF'});
     downText = game.add.text(358, 10, '↓: ' + playerData.downAction.name, { fontSize: '34px', fill: '#FFF'});
     spaceText = game.add.text(532, 10, '[space]: ' + playerData.spaceAction.name, { fontSize: '34px', fill: '#FFF'});
 
-    [healthText, upText, sideText, downText, spaceText].forEach(function(text, idx) {
+    [healthText, gemText, upText, sideText, downText, spaceText].forEach(function(text, idx) {
       text.anchor.set(0)
       text.fixedToCamera = true;
       text.stroke = '#141414';
@@ -126,6 +148,7 @@ window.onload = function() {
     });
 
     healthText.anchor.set(0.5)
+    gemText.anchor.set(0.5)
     cursors = game.input.keyboard.createCursorKeys();
     spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
@@ -140,9 +163,11 @@ window.onload = function() {
 
     game.physics.arcade.collide(player, layer);
     game.physics.arcade.collide(enemies, layer);
+    game.physics.arcade.collide(gems, layer);
     game.physics.arcade.collide(enemies, enemies);
     game.physics.arcade.overlap(player, enemies, enemyContact, null, this);
     game.physics.arcade.overlap(fireballs, enemies, enemyHit, null, this);
+    game.physics.arcade.overlap(player, gems, collectGem, null, this);
 
 
     // Side action
@@ -157,9 +182,7 @@ window.onload = function() {
     if (game.time.now > playerData.memoryTimer) {
       var randIdx = randInt(0, actionShuffle.length-1);
       var changing = playerData.upAction === none ? 'up' : actionShuffle[randIdx];
-      console.log(changing);
       actionShuffle.splice(randIdx, 1);
-      console.log(actionShuffle);
       if (actionShuffle.length === 0) {
         actionShuffle = ['up', 'side', 'down', 'space'];
       }
@@ -197,7 +220,7 @@ window.onload = function() {
   function render () {
     //game.debug.text(game.time.physicsElapsed, 32, 32);
     //game.debug.body(player);
-    //game.debug.bodyInfo(player, 16, 24);
+    game.debug.bodyInfo(player, 16, 24);
     //enemies.forEach(function(enemy) { game.debug.body(enemy); });
 
   }
@@ -237,6 +260,16 @@ window.onload = function() {
     enemy.kill();
   }
 
+  function collectGem(player, gem) {
+    gem.kill();
+    playerData.gems += 1;
+    updateHealth(playerData.health + 5);
+    gemText.text = 'Gems: ' + parseInt(playerData.gems);
+    if (playerData.gems >= 10) {
+      gemText.text = 'Mission Complete';
+    }
+  }
+
   function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
   }
@@ -255,12 +288,12 @@ window.onload = function() {
       playerData.jumpTimer = game.time.now + 750;
     }
     if (!player.body.onFloor()) {
-      if (player.body.velocity.y < -200) {
+      if (player.body.velocity.y < -400) {
         player.frame = {
           right: 10,
           left: 13
         }[playerData.facing]
-      } else if (player.body.velocity.y >= -200 && player.body.velocity.y < 25) {
+      } else if (player.body.velocity.y >= -400 && player.body.velocity.y < 25) {
         player.frame = {
           right: 12,
           left: 15
