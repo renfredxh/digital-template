@@ -15,7 +15,7 @@ window.onload = function() {
 
   var map;
   var tileset;
-  var healthText;
+  var healthText, upText, sideText, downText, spaceText;
   var layer;
   var player;
   var playerData = {};
@@ -56,6 +56,10 @@ window.onload = function() {
     playerData.health = 100;
     playerData.jumpTimer = 0;
     playerData.healthTimer = 0;
+    playerData.sideAction = actions.side[0];
+    playerData.upAction = actions.up[0];
+    playerData.downAction = actions.down[0];
+    playerData.spaceAction = actions.space[0];
     player = game.add.sprite(20, 3000, 'dog');
     game.physics.enable(player, Phaser.Physics.ARCADE);
 
@@ -91,19 +95,29 @@ window.onload = function() {
       game.add.tween(enemy.body.velocity).to( {x: enemyVelocity}, enemyDuration, Phaser.Easing.Back.InOut, true, enemyDelay, false)
     }
 
+    healthText = game.add.text(720, 570, 'Health: ' + parseInt(playerData.health), { fontSize: '34px', fill: '#fff'});
+    upText = game.add.text(10, 10, '↑: ' + playerData.upAction.name, { fontSize: '34px', fill: '#FFF'});
+    sideText = game.add.text(184, 10, '⇄: ' + playerData.sideAction.name, { fontSize: '34px', fill: '#FFF'});
+    downText = game.add.text(358, 10, '↓: ' + playerData.downAction.name, { fontSize: '34px', fill: '#FFF'});
+    spaceText = game.add.text(532, 10, '[space]: ' + playerData.spaceAction.name, { fontSize: '34px', fill: '#FFF'});
 
-    healthText = game.add.text(720, 570, 'Health: ' + parseInt(playerData.health), { fontSize: '34px', fill: '#FFF'});
+    [healthText, upText, sideText, downText, spaceText].forEach(function(text, idx) {
+      text.anchor.set(0)
+      text.fixedToCamera = true;
+      text.stroke = '#141414';
+      text.strokeThickness = 4;
+    });
+
     healthText.anchor.set(0.5)
-    healthText.fixedToCamera = true;
-    healthText.stroke = '#141414';
-    healthText.strokeThickness = 4;
-
     cursors = game.input.keyboard.createCursorKeys();
     jumpButton = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
   }
 
   function update() {
+
+    var side = playerData.sideAction;
+    var up = playerData.upAction;
 
     game.physics.arcade.collide(player, layer);
     game.physics.arcade.collide(enemies, layer);
@@ -113,58 +127,10 @@ window.onload = function() {
     player.body.velocity.x = 0;
 
     // Walking
-    if (cursors.left.isDown) {
-      if (!playerData.moving || playerData.facing === 'right') {
-        player.animations.play('left');
-      }
-      playerData.facing = 'left';
-      playerData.moving = true
-      player.body.velocity.x = -150;
-
-    } else if (cursors.right.isDown) {
-      if (!playerData.moving || playerData.facing === 'left') {
-        player.animations.play('right');
-      }
-      playerData.facing = 'right'
-      playerData.moving = true
-      player.body.velocity.x = 150;
-    }
-    else {
-      if (playerData.moving) {
-        player.animations.stop();
-        standStill(player)
-        playerData.moving = false;
-      }
-    }
+    side.action.apply(side, side.args);
 
     // Jumping
-    if (jumpButton.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
-      player.body.velocity.y = -420;
-      playerData.jumpTimer = game.time.now + 750;
-    }
-    if (!player.body.onFloor()) {
-      if (player.body.velocity.y < -200) {
-        player.frame = {
-          right: 10,
-          left: 13
-        }[playerData.facing]
-      } else if (player.body.velocity.y >= -200 && player.body.velocity.y < 25) {
-        player.frame = {
-          right: 12,
-          left: 15
-        }[playerData.facing]
-      } else {
-        player.frame = {
-          right: 11,
-          left: 14
-        }[playerData.facing]
-      }
-    } else if (!playerData.moving) {
-      standStill(player)
-    }
-
-    // Enemies
-    
+    up.action.apply(up, up.args);
   }
 
   function render () {
@@ -195,5 +161,76 @@ window.onload = function() {
 
   function randInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  var PlayerAction = function(name, action) {
+    this.name = name;
+    this.action = action;
+    this.args = [];
+  }
+
+  var none = new PlayerAction('None', function() {}, []);
+
+  var jump = new PlayerAction('Jump', function(velocity) {
+    if (cursors.up.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
+      player.body.velocity.y = -420;
+      playerData.jumpTimer = game.time.now + 750;
+    }
+    if (!player.body.onFloor()) {
+      if (player.body.velocity.y < -200) {
+        player.frame = {
+          right: 10,
+          left: 13
+        }[playerData.facing]
+      } else if (player.body.velocity.y >= -200 && player.body.velocity.y < 25) {
+        player.frame = {
+          right: 12,
+          left: 15
+        }[playerData.facing]
+      } else {
+        player.frame = {
+          right: 11,
+          left: 14
+        }[playerData.facing]
+      }
+    } else if (!playerData.moving) {
+      standStill(player)
+    }
+  }, [420]);
+
+  /*
+   * Walk at normal speed.
+   */
+  var walk = new PlayerAction('Walk', function() {
+    if (cursors.left.isDown) {
+      if (!playerData.moving || playerData.facing === 'right') {
+        player.animations.play('left');
+      }
+      playerData.facing = 'left';
+      playerData.moving = true
+      player.body.velocity.x = -150;
+
+    } else if (cursors.right.isDown) {
+      if (!playerData.moving || playerData.facing === 'left') {
+        player.animations.play('right');
+      }
+      playerData.facing = 'right'
+      playerData.moving = true
+      player.body.velocity.x = 150;
+    }
+    else {
+      if (playerData.moving) {
+        player.animations.stop();
+        standStill(player)
+        playerData.moving = false;
+      }
+    }
+  }, [])
+
+  var actions = {
+    'up': [jump],
+    'side': [walk],
+    'down': [none],
+    'space': [none]
   }
 }
