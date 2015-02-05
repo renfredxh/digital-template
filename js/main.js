@@ -20,13 +20,17 @@ window.onload = function() {
   var layer;
   var player;
   var playerData = {};
+  var actionSet = 0;
   var enemies;
   var fireballs;
   var cursors;
   var spaceBar;
   var bg;
 
-  var enemyLocations = [[15,90], [30, 90], [35, 90]]
+  var actionIndexes = {up: 0, side: 0, down: 0, space: 0};
+  var actionTiming = [[3000, 5000], [2000, 10000]];
+  var enemyLocations = [[15,90], [30, 90], [35, 90]];
+  var actionShuffle = ['up', 'side', 'down', 'space'];
 
   function create() {
 
@@ -59,10 +63,11 @@ window.onload = function() {
     playerData.jumpTimer = 0;
     playerData.healthTimer = 0;
     playerData.fireTimer = 0;
-    playerData.sideAction = actions.side[0][0];
-    playerData.upAction = actions.up[0][0];
-    playerData.downAction = actions.down[0][0];
-    playerData.spaceAction = actions.space[0][0];
+    playerData.memoryTimer = game.time.now + randInt(3000, 5000);
+    playerData.sideAction = actions.side[0];
+    playerData.upAction = none;
+    playerData.downAction = actions.down[0];
+    playerData.spaceAction = actions.space[0];
     player = game.add.sprite(20, 3000, 'dog');
     game.physics.enable(player, Phaser.Physics.ARCADE);
 
@@ -131,6 +136,7 @@ window.onload = function() {
     var side = playerData.sideAction;
     var up = playerData.upAction;
     var space = playerData.spaceAction;
+    var actionsRemaining;
 
     game.physics.arcade.collide(player, layer);
     game.physics.arcade.collide(enemies, layer);
@@ -145,8 +151,46 @@ window.onload = function() {
     // Up action
     up.action.apply(up, up.args);
 
-    //
+    // Space action
     space.action.apply(space, space.args);
+
+    if (game.time.now > playerData.memoryTimer) {
+      var randIdx = randInt(0, actionShuffle.length-1);
+      var changing = playerData.upAction === none ? 'up' : actionShuffle[randIdx];
+      console.log(changing);
+      actionShuffle.splice(randIdx, 1);
+      if (actionShuffle.length === 0) {
+        actionShuffle = ['up', 'side', 'down', 'space'];
+      }
+      var updateActionFunc = {
+        up: updateUpAction,
+        side: updateSideAction,
+        down: updateDownAction,
+        space: updateSpaceAction
+      }[changing];
+      updateActionFunc();
+      playerData.memoryTimer = game.time.now + randInt (2000, 4000);
+    }
+  }
+
+  var updateUpAction = function() {
+    playerData.upAction = actions.up[randInt(0, actions.up.length-1)];
+    upText.text = '↑: ' + playerData.upAction.name;
+  }
+
+  var updateSideAction = function() {
+    playerData.sideAction = actions.side[randInt(0, actions.side.length-1)];
+    sideText.text =  '⇄: ' + playerData.sideAction.name;
+  }
+
+  var updateDownAction = function() {
+    playerData.downAction = actions.down[randInt(0, actions.down.length-1)];
+    '↓: ' + playerData.downAction.name;
+  }
+
+  var updateSpaceAction = function() {
+    playerData.spaceAction = actions.space[randInt(0, actions.space.length-1)];
+    '[space]: ' + playerData.spaceAction.name;
   }
 
   function render () {
@@ -235,6 +279,7 @@ window.onload = function() {
    * Walk at normal speed.
    */
   var walk = new PlayerAction('Walk', function() {
+    player.body.acceleration.x = 0;
     if (cursors.left.isDown) {
       if (!playerData.moving || playerData.facing === 'right') {
         player.animations.play('left');
@@ -313,10 +358,11 @@ window.onload = function() {
     }
 
   });
+
   var actions = {
-    'up': [[none],[jump]],
-    'side': [[walk],[run]],
-    'down': [[none]],
-    'space':[[none],[fire]]
+    up: [jump],
+    side: [walk,run],
+    down: [none],
+    space:[none,fire]
   }
 }
