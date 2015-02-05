@@ -159,6 +159,7 @@ window.onload = function() {
       var changing = playerData.upAction === none ? 'up' : actionShuffle[randIdx];
       console.log(changing);
       actionShuffle.splice(randIdx, 1);
+      console.log(actionShuffle);
       if (actionShuffle.length === 0) {
         actionShuffle = ['up', 'side', 'down', 'space'];
       }
@@ -185,12 +186,12 @@ window.onload = function() {
 
   var updateDownAction = function() {
     playerData.downAction = actions.down[randInt(0, actions.down.length-1)];
-    '↓: ' + playerData.downAction.name;
+    downText.text = '↓: ' + playerData.downAction.name;
   }
 
   var updateSpaceAction = function() {
     playerData.spaceAction = actions.space[randInt(0, actions.space.length-1)];
-    '[space]: ' + playerData.spaceAction.name;
+    spaceText.text = '[space]: ' + playerData.spaceAction.name;
   }
 
   function render () {
@@ -361,8 +362,8 @@ window.onload = function() {
 
   var actions = {
     up: [jump],
-    side: [walk,run],
+    side: [walk,run,run],
     down: [none],
-    space:[none,fire]
+    space:[none,fire,fire,fire]
   }
 }
