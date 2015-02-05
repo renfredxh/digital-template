@@ -69,7 +69,8 @@ window.onload = function() {
 
     player.animations.add('right', [0, 1, 2, 3], 10, true);
     player.animations.add('left', [6, 7, 8, 9], 10, true);
-    player.animations.add('turn', [4], 20, true);
+    player.animations.add('rightRun', [20, 21, 22, 23, 24], 10, true);
+    player.animations.add('leftRun', [25, 26, 27, 28, 29], 10, true);
 
     game.camera.follow(player);
 
@@ -124,7 +125,6 @@ window.onload = function() {
     game.physics.arcade.collide(enemies, enemies);
     game.physics.arcade.overlap(player, enemies, enemyContact, null, this);
 
-    player.body.velocity.x = 0;
 
     // Walking
     side.action.apply(side, side.args);
@@ -136,7 +136,7 @@ window.onload = function() {
   function render () {
     //game.debug.text(game.time.physicsElapsed, 32, 32);
     //game.debug.body(player);
-    //game.debug.bodyInfo(player, 16, 24);
+    game.debug.bodyInfo(player, 16, 24);
     //enemies.forEach(function(enemy) { game.debug.body(enemy); });
 
   }
@@ -220,6 +220,41 @@ window.onload = function() {
     }
     else {
       if (playerData.moving) {
+        player.body.velocity.x = 0;
+        player.animations.stop();
+        standStill(player)
+        playerData.moving = false;
+      }
+    }
+  }, [])
+
+  var run = new PlayerAction('Run', function() {
+    if (cursors.left.isDown) {
+      if (!playerData.moving || playerData.facing === 'right') {
+        player.animations.play('leftRun');
+      }
+      playerData.facing = 'left';
+      playerData.moving = true
+      player.body.acceleration.x = -500;
+      if (player.body.velocity.x <= -400) {
+        player.body.velocity.x = -500;
+      }
+
+    } else if (cursors.right.isDown) {
+      if (!playerData.moving || playerData.facing === 'left') {
+        player.animations.play('rightRun');
+      }
+      playerData.facing = 'right'
+      playerData.moving = true
+      player.body.acceleration.x = 500;
+      if (player.body.velocity.x >= 400) {
+        player.body.velocity.x = 500;
+      }
+    }
+    else {
+      if (playerData.moving) {
+        player.body.velocity.x = 0;
+        player.body.acceleration.x = 0;
         player.animations.stop();
         standStill(player)
         playerData.moving = false;
@@ -229,7 +264,7 @@ window.onload = function() {
 
   var actions = {
     'up': [jump],
-    'side': [walk],
+    'side': [run],
     'down': [none],
     'space': [none]
   }
