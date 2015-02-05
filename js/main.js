@@ -9,7 +9,7 @@ window.onload = function() {
     game.load.image('tiles', 'assets/tiles.png');
     game.load.spritesheet('dog', 'assets/dogsheet.png', 128, 96);
     game.load.image('robot', 'assets/robot.png');
-    game.load.image('background', 'assets/background2.png');
+    game.load.image('background', 'assets/background.png');
 
   }
 
@@ -32,8 +32,8 @@ window.onload = function() {
 
     game.stage.backgroundColor = '#000000';
 
-    //bg = game.add.tileSprite(0, 0, 800, 600, 'background');
-    //bg.fixedToCamera = true;
+    bg = game.add.tileSprite(0, 0, 800, 600, 'background');
+    bg.fixedToCamera = true;
 
     map = game.add.tilemap('level');
 
