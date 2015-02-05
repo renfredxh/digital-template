@@ -314,7 +314,7 @@ window.onload = function() {
       }
       playerData.facing = 'left';
       playerData.moving = true
-      player.body.acceleration.x = -500;
+      player.body.acceleration.x = -450;
       if (player.body.velocity.x <= -400) {
         player.body.velocity.x = -500;
       }
@@ -325,7 +325,7 @@ window.onload = function() {
       }
       playerData.facing = 'right'
       playerData.moving = true
-      player.body.acceleration.x = 500;
+      player.body.acceleration.x = 450;
       if (player.body.velocity.x >= 400) {
         player.body.velocity.x = 500;
       }
