@@ -13,6 +13,7 @@ window.onload = function() {
     game.load.image('robot', 'assets/robot.png');
     game.load.image('background', 'assets/background.png');
     game.load.audio('pickup', 'assets/pickup.ogg');
+    game.load.audio('explosion', 'assets/explosion.ogg');
 
   }
 
@@ -29,12 +30,12 @@ window.onload = function() {
   var cursors;
   var spaceBar;
   var bg;
-  var gemSound;
+  var gemSound, exSound;
 
   var actionIndexes = {up: 0, side: 0, down: 0, space: 0};
   var actionTiming = [[3000, 5000], [2000, 10000]];
-  var enemyLocations = [[45,81], [85,97], [73, 97], [39, 31], [61, 87], [72, 31], [90, 26], [90, 35], [90, 22]];
-  var gemLocations = [[14,90], [16, 90], [18, 90], [14, 95], [18, 95], [81,88], [88,76], [61,87], [72, 31], [80, 31], [86, 31], [85, 26], [36, 33], [67, 22]];
+  var enemyLocations = [[45,81], [85,97], [73, 97], [39, 31], [61, 87], [72, 31], [90, 26], [90, 35], [90, 22], [93, 66], [115, 78], [122, 78], [112, 60], [63, 76], [91, 70], [51, 76], [55, 76]];
+  var gemLocations = [[16, 90], [26, 92], [14, 95], [18, 95], [81,88], [72, 31], [80, 31], [86, 31], [85, 26], [36, 33], [67, 22], [93, 66], [108, 61], [113, 61], [117, 61], [120, 84], [103, 85], [97, 74]];
   var actionShuffle = ['up', 'side', 'down', 'space'];
 
   function create() {
@@ -76,7 +77,6 @@ window.onload = function() {
     player = game.add.sprite(20, 3000, 'dog');
     game.physics.enable(player, Phaser.Physics.ARCADE);
 
-    player.body.bounce.y = 0.2;
     player.body.collideWorldBounds = true;
     player.body.setSize(80, 64, 25, 32);
 
@@ -130,9 +130,10 @@ window.onload = function() {
     fireballs = game.add.group();
     fireballs.enableBody = true;
     fireballs.physicsBodyType = Phaser.Physics.ARCADE;
-    fireballs.createMultiple(25, 'fireball');
-    fireballs.setAll('checkWorldBounds', true);
+    fireballs.createMultiple(60, 'fireball');
+    fireballs.setAll('alive', false);
     fireballs.setAll('outOfBoundsKill', true);
+    fireballs.setAll('checkWorldBounds', true);
 
     healthText = game.add.text(720, 570, 'Health: ' + parseInt(playerData.health), { fontSize: '34px', fill: '#fff'});
     gemText = game.add.text(520, 570, 'Gems: ' + parseInt(playerData.gems), { fontSize: '34px', fill: '#fff'});
@@ -154,6 +155,8 @@ window.onload = function() {
     spaceBar = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
 
     gemSound = game.add.audio('pickup');
+    exSound  = game.add.audio('explosion');
+    exSound.allowMultiple = true;
     gemSound.allowMultiple = true;
   }
 
@@ -271,7 +274,9 @@ window.onload = function() {
     gemSound.play();
     gem.kill();
     playerData.gems += 1;
-    updateHealth(playerData.health + 5);
+    if (playerData.health <= 38) {
+      updateHealth(playerData.health + 2);
+    }
     gemText.text = 'Gems: ' + parseInt(playerData.gems);
     if (playerData.gems >= 10) {
       gemText.text = 'Mission Complete';
@@ -292,21 +297,24 @@ window.onload = function() {
 
   var jump = new PlayerAction('Jump', function(velocity) {
     if (cursors.up.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
-      player.body.velocity.y = -420;
+      player.body.velocity.y = -520;
       playerData.jumpTimer = game.time.now + 750;
     }
     if (!player.body.onFloor()) {
-      if (player.body.velocity.y < -400) {
+      if (player.body.velocity.y < -520) {
+        // Up animation
         player.frame = {
           right: 10,
           left: 13
         }[playerData.facing]
       } else if (player.body.velocity.y >= -400 && player.body.velocity.y < 25) {
+        // Mid animation
         player.frame = {
           right: 12,
           left: 15
         }[playerData.facing]
       } else {
+        // Down animation
         player.frame = {
           right: 11,
           left: 14
@@ -319,7 +327,7 @@ window.onload = function() {
 
   var highJump = new PlayerAction('High Jump', function(velocity) {
     if (cursors.up.isDown && player.body.onFloor() && game.time.now > playerData.jumpTimer) {
-      player.body.velocity.y = -620;
+      player.body.velocity.y = -700;
       playerData.jumpTimer = game.time.now + 750;
     }
     if (!player.body.onFloor()) {
@@ -437,6 +445,9 @@ window.onload = function() {
       }
       playerData.facing = 'left';
       playerData.moving = true
+      if (player.body.velocity.x > -100) {
+        player.body.velocity.x = -100;
+      }
       player.body.acceleration.x = -450;
       if (player.body.velocity.x <= -400) {
         player.body.velocity.x = -500;
@@ -448,6 +459,9 @@ window.onload = function() {
       }
       playerData.facing = 'right'
       playerData.moving = true
+      if (player.body.velocity.x < 100) {
+        player.body.velocity.x = 100;
+      }
       player.body.acceleration.x = 450;
       if (player.body.velocity.x >= 400) {
         player.body.velocity.x = 500;
@@ -478,14 +492,41 @@ window.onload = function() {
         fireball.body.velocity.x = -500;
       }
       fireball.body.velocity.y = 30;
+      exSound.play();
       playerData.fireTimer = game.time.now + 1000;
     }
 
   });
 
+  var tripleFire = new PlayerAction('Triple Fire', function() {
+    if (spaceBar.isDown && game.time.now > playerData.fireTimer) {
+      var fireball;
+      var positions = [45, -5, -50];
+      var ySpeeds = [30, 0, -30];
+      var xSpeeds = [500, 550, 500];
+      for (var i=0; i<3; i++) {
+        fireball = fireballs.getFirstDead();
+        if (fireball === null) return; // Used up too many sprites, wait until ready
+        fireball.body.allowGravity = false;
+        if (playerData.facing === 'right') {
+          fireball.reset(player.body.x + 64, player.body.y + positions[i]);
+          fireball.frame = 0;
+          fireball.body.velocity.x = xSpeeds[i];
+        } else {
+          fireball.reset(player.body.x - 64, player.body.y + positions[i]);
+          fireball.frame = 1;
+          fireball.body.velocity.x = -xSpeeds[i];
+        }
+        fireball.body.velocity.y = ySpeeds[i];
+      }
+      exSound.play();
+      playerData.fireTimer = game.time.now + 1000;
+    }
+  });
+
   var heal = new PlayerAction('Heal', function() {
     if (cursors.down.isDown && game.time.now > playerData.healthTimer) {
-      if (playerData.health <= 40) {
+      if (playerData.health <= 38) {
         updateHealth(playerData.health + 2);
       }
       playerData.healthTimer = game.time.now + 1000;
@@ -494,8 +535,8 @@ window.onload = function() {
 
   var actions = {
     up: [jump, jump, highJump, superJump],
-    side: [walk, run, run, dash],
+    side: [run],//[walk, run, run, dash],
     down: [none, heal],
-    space:[none, fire, fire, fire]
+    space: [none, fire, fire, tripleFire]
   }
 }
