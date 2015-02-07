@@ -278,7 +278,7 @@ window.onload = function() {
       updateHealth(playerData.health + 2);
     }
     gemText.text = 'Gems: ' + parseInt(playerData.gems);
-    if (playerData.gems >= 10) {
+    if (playerData.gems >= 15) {
       gemText.text = 'Mission Complete';
     }
   }
