@@ -535,7 +535,7 @@ window.onload = function() {
 
   var actions = {
     up: [jump, jump, highJump, superJump],
-    side: [run],//[walk, run, run, dash],
+    side: [walk, run, run, dash],
     down: [none, heal],
     space: [none, fire, fire, tripleFire]
   }
